@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Query Assistant</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <h1>Real-Time Query Assistant</h1>
+    <div class="container">
+
+        <label for="imageInput" class="file-label">
+            <img src="{{ url_for('static', filename='icon.png') }}" alt="Attach Image">
+        </label>
+        <input type="file" id="imageInput" accept="image/*" style="display: none;">
+
+        <label for="cameraBtn" class="camera-label">
+            <img src="https://img.icons8.com/ios/50/000000/camera.png" alt="Camera Icon">
+        </label>
+        <button id="cameraBtn" style="display:none;">Open Camera</button>
+
+        <video id="video" width="100%" style="display:none;"></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+        <button id="snap" style="display:none;">Take Photo</button>
+
+        <img id="imagePreview" alt="Image preview" style="display:none;">
+
+
+        <label for="micBtn" class="mic-label">
+            <img src="https://img.icons8.com/ios/50/000000/microphone.png" alt="Mic Icon">
+        </label>
+        <button id="micBtn">Start Voice Input</button>
+        <span id="micStatus" class="mic-recording" style="display:none;">Recording...</span>
+
+
+        <input type="text" id="questionInput" placeholder="Ask a question about the image">
+        <button id="submitBtn">Ask</button>
+
+        <div class="chat-box" id="chat-box">
+            {% for message in messages %}
+                <div class="message {{ 'user-message' if message.type == 'user' else 'bot-message' }}">
+                    {{ message.text }}
+                </div>
+            {% endfor %}
+        </div>
+
+
+    </div>
+
+    <script>
+        const socket = io.connect('http://' + document.domain + ':' + location.port);
+
+const cameraBtn = document.getElementById('cameraBtn');
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const snapBtn = document.getElementById('snap');
+const imagePreview = document.getElementById('imagePreview');
+const micBtn = document.getElementById('micBtn');
+const micStatus = document.getElementById('micStatus');
+const questionInput = document.getElementById('questionInput');
+
+cameraBtn.addEventListener('click', () => {
+    // Отримуємо доступ до камери
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then((stream) => {
+            video.style.display = 'block';
+            video.srcObject = stream;
+            video.play();
+            snapBtn.style.display = 'inline-block';
+        })
+        .catch((error) => {
+            console.error('Camera access error:', error);
+        });
+});
+
+
+snapBtn.addEventListener('click', () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const imageData = canvas.toDataURL('image/png');
+    imagePreview.src = imageData;
+    imagePreview.style.display = 'block';
+
+
+    const stream = video.srcObject;
+    const tracks = stream.getTracks();
+    tracks.forEach(track => track.stop());
+    video.srcObject = null;
+    video.style.display = 'none';
+    snapBtn.style.display = 'none';
+});
+
+
+if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'uk-UA';
+    recognition.interimResults = true;
+
+    micBtn.addEventListener('click', () => {
+        micStatus.style.display = 'inline';
+        recognition.start();
+    });
+
+    recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+        }
+        questionInput.value = transcript;
+    };
+
+    recognition.onerror = (event) => {
+        micStatus.style.display = 'none';
+        console.error('Speech recognition error:', event.error);
+    };
+
+    recognition.onend = () => {
+        micStatus.style.display = 'none';
+    };
+} else {
+    alert('Your browser does not support voice recognition.');
+}
+
+function addMessage(type, text) {
+    const messageDiv = document.createElement("div");
+    messageDiv.classList.add("message");
+    messageDiv.classList.add(type === "user" ? "user-message" : "bot-message");
+    messageDiv.textContent = text;
+    document.getElementById('chat-box').appendChild(messageDiv);
+    document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight; // Прокручувати до кінця
+}
+
+document.getElementById('imageInput').onchange = function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('imagePreview').src = e.target.result;
+            document.getElementById('imagePreview').style.display = "block";
+        };
+        reader.readAsDataURL(file);
+    }
+};
+
+document.getElementById('submitBtn').onclick = function() {
+    const imageInput = document.getElementById('imageInput').files[0];
+    const questionInputValue = document.getElementById('questionInput').value;
+
+    if (!questionInputValue) {
+        document.getElementById('response').innerText = "Please enter a question.";
+        return;
+    }
+
+    if (imageInput || document.getElementById('imagePreview').src) {
+        const imageData = document.getElementById('imagePreview').src;
+        sendQuery(imageData, questionInputValue);
+    } else {
+        document.getElementById('response').innerText = "Please upload or capture an image.";
+    }
+};
+
+function sendQuery(imageData, question) {
+    addMessage("user", question);
+    socket.emit('query_image', {
+        image: imageData,
+        question: question
+    });
+}
+
+socket.on('response', function(data) {
+    addMessage("bot", data.answer);
+});
+    </script>
+</body>
+</html>
