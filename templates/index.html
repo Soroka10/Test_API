@@ -62,7 +62,7 @@ const micStatus = document.getElementById('micStatus');
 const questionInput = document.getElementById('questionInput');
 
 cameraBtn.addEventListener('click', () => {
-    // Отримуємо доступ до камери
+    
     navigator.mediaDevices.getUserMedia({ video: true })
         .then((stream) => {
             video.style.display = 'block';
