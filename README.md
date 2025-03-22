@@ -15,7 +15,7 @@
 ### 1. Клонування репозиторію
 ```bash
 git clone https://github.com/Soroka10/Test_API.git
-cd real-time-query-assistant
+cd Test_API
 ```
 
 ### 2. Встановлення залежностей
@@ -33,7 +33,7 @@ pip install -r requirements.txt
 ### 3. Налаштування API
 Створіть **файл `.env`** у кореневій директорії проєкту та додайте у нього API-ключ **Google Gemini API**:
 ```bash
-GOOGLE_GEMINI_API_KEY=your_api_key_here
+GOOGLE_GEMINI_API_KEY=<your_api_key_here>
 ```
 
 ---
