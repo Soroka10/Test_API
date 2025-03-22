@@ -20,8 +20,9 @@ Real-Time Query Assistant** — це веб-застосунок, що дозв�
 ### 2. Встановлення залежностей
 Переконайтеся, що у вас встановлений **Python 3.10+**. Створіть та активуйте **віртуальне середовище**:
  python -m venv venv
- source venv/bin/activate  # Для macOS/Linux
- venv\Scripts\activate    # Для Windows
+ 
+ **source venv/bin/activate  
+ venv\Scripts\activate    
 
 Потім встановіть необхідні залежності:
  pip install -r requirements.txt
